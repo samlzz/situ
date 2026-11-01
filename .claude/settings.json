@@ -1,0 +1,27 @@
+{
+  "model": "opusplan",
+  "showClearContextOnPlanAccept": true,
+  "permissions": {
+    "allow": [
+      "Bash(make build)",
+      "Bash(make check)",
+      "Bash(make test)",
+      "Bash(make vet)",
+      "Bash(make fmt)",
+      "Bash(go build *)",
+      "Bash(go test *)",
+      "Bash(go vet *)",
+      "Bash(go run ./cmd/situ *)",
+      "Bash(go mod tidy)",
+      "Bash(gofmt *)"
+    ],
+    "deny": [
+      "Bash(sudo *)",
+      "Bash(systemctl *)",
+      "Bash(etckeeper *)",
+      "Bash(git push *)",
+      "Bash(git tag *)",
+      "Bash(go get *)"
+    ]
+  }
+}
