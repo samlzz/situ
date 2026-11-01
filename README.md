@@ -1,12 +1,20 @@
-# situ
+# SITU
 
 **SITU Installs, Tracks & Uninstalls.**
 
-situ keeps configuration files *in situ*: in their place. It deploys the files, directories and systemd units described in a git repository to the Linux host it runs on, tells you when something on the host has drifted from the repository, and removes cleanly what it installed.
+`situ` keeps configuration files *in situ*: in their place. It deploys the files, directories and systemd units described in a git repository to the Linux host it runs on, tells you when something on the host has drifted from the repository, and removes cleanly what it installed.
 
 It is a small, local tool for a personal homelab: one static binary, no daemon, no agent, no remote connection, plain-text manifests.
 
-> **Status:** in development, towards v0.1.0. Nothing is released yet.
+> **Status:** in development, towards v0.1.0. Personal tool, no warranty: try it with `--root` on a scratch directory first.
+>
+> **Vibe-coded:** the code is written by Claude Code from a specification I wrote. Automated tests check it against that specification, and I read it as I learn Go, without mastering every line.
+
+## Why SITU
+
+I needed a simple way to deploy hand-written configuration from a git repository to the machines of my homelab: copies rather than links, with drift detection and clean removal. No existing tool fit: GNU Stow and Nix system-manager rely on symbolic links, chezmoi is designed for the home directory, Ansible is heavy for a single host and has no simple way to take a change made on the host back into the repository or to uninstall, and a `.deb` package is a lot of machinery for a component of one or two files, unusable anyway on some targets such as LibreELEC.
+
+I needed it quickly, so this first version is written by AI. Whether I take it over by hand later will depend on how it holds up in daily use. Meanwhile, it is how I learn Go, and how a deployment tool works from the inside.
 
 ## How it works
 
@@ -50,7 +58,7 @@ On a host, situ picks `hosts/$(hostname -s)/`, follows `requires`, and compares 
 go install github.com/samlzz/situ/cmd/situ@latest
 ```
 
-situ is built with `CGO_ENABLED=0` into a static binary: copy it to the host, nothing else is needed there.
+`situ` is built with `CGO_ENABLED=0` into a static binary: copy it to the host, nothing else is needed there.
 
 ## Documentation
 
