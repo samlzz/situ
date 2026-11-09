@@ -1,0 +1,58 @@
+Situfile format 1
+
+A module is a directory holding one file named Situfile. The file is UTF-8
+text with LF line endings.
+
+Lexical rules
+  - One statement per line. Blank lines are ignored.
+  - Fields are separated by spaces or tabs. No quoting, no escaping.
+  - A field starting with # starts a comment (a#b is one field).
+  - Keywords are lowercase. Wrong field counts are errors.
+
+Statements
+  format   1
+  requires <target>
+  file     <mode> <owner> <source> <destination>
+  config   <mode> <owner> <source> <destination>
+  dir      <mode> <owner> -        <destination>
+  data     <mode> <owner> -        <destination>
+  enable   <unit>
+  start    <unit>
+
+  format must be the first statement and its value must be 1. After it,
+  statements may appear in any order.
+
+Roles
+  file    Owned by the repository; host changes are overwritten.
+  config  The host may edit it; host changes are never overwritten silently.
+  dir     Directory created and owned by the component; removed if empty.
+  data    Directory whose content belongs to programs; never deleted.
+  enable  systemd unit that is enabled.
+  start   systemd unit that is started (independent of enable).
+
+Fields
+  mode         Exactly four octal digits: 0644, 0755, 2775.
+  owner        <user>:<group>. Each part is a name ([a-z_][a-z0-9_-]*, may
+               end with $) or a decimal ID. Both parts are required.
+  source       Path relative to the Situfile directory, naming a regular
+               file (no symbolic link). No leading or trailing /, no empty,
+               . or .. component. Must be - for dir and data.
+  destination  Absolute path on the host, not /. No empty, . or ..
+               component, no trailing /.
+  unit         One or more of A-Z a-z 0-9 : _ . @ \ - ending with .service,
+               .socket, .timer, .target, .path, .mount, .automount, .swap
+               or .slice. Never contains /.
+  target       <component> or <category>/<component>; names match
+               [a-z0-9][a-z0-9-]*. A host profile is never a target.
+
+Variables
+  ${NAME} is replaced in destinations only. NAME matches [A-Z][A-Z0-9_]*.
+  Defined: HOST, the name of the host profile directory. An undefined
+  variable, or a $ that does not start a valid ${NAME}, is an error.
+
+Errors within one Situfile
+  - two entries with the same destination (after expansion);
+  - the same unit listed twice under the same role;
+  - a target listed twice, or a Situfile requiring itself.
+
+Errors are reported as <path>:<line>: <message> on stderr, exit code 2.

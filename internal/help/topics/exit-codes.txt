@@ -1,0 +1,11 @@
+Exit codes
+
+  0  Success, conforming, nothing to do, or help printed.
+  1  Drift or conflict reported (check), operation refused because an
+     action is needed from the user (install, remove, adopt), path not
+     found (list).
+  2  User error: wrong usage, unknown command, option or help topic,
+     invalid Situfile, invalid repository, unknown module, missing
+     profile, not root.
+  3  System error: I/O error, permission denied, systemctl or git
+     failure, broken state file, lock held.
