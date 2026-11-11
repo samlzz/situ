@@ -102,6 +102,25 @@ Order: modules are processed in a topological order, dependencies first. Ties ar
 
 The parent directory of every destination must either exist on the host as a directory, or be the destination of a `dir` or `data` entry of the graph. Otherwise the plan fails with code 2 (the Situfile is incomplete). situ never creates undeclared parent directories.
 
+### Order of processing
+
+The order of statements in a Situfile never changes what situ does (see [format.md](format.md)). Statements are processed by kind, always in the same order: `requires`, then entries (`dir`, `data`, `file`, `config`), then units (`enable`, `start`).
+
+Reading (every command). Each stage starts only when the previous one has succeeded:
+
+1. Each Situfile is read and checked on its own (every rule of [format.md](format.md) that needs no other module); all its errors are reported together, sorted by line.
+2. `requires` build the graph of the run (see [The graph](#the-graph)): missing targets, ambiguity and cycles.
+3. Entries: destinations are expanded for the profile, sources are checked, then duplicate destinations across modules and the [parents](#parents-of-destinations) are checked.
+4. Units: duplicate units across modules are checked.
+
+Applying (`install`), see [`install`](#install---force-module):
+
+- Between modules: topological order, dependencies first, in every phase.
+- Between kinds, inside the run: orphan teardown, then `dir` and `data`, then `file` and `config`, then `daemon-reload`, then `enable`, then `start`. A phase is finished for every module before the next one starts.
+- Inside one module and one phase: the order of the Situfile, except that a `dir` or `data` entry always comes after the entry that creates its parent.
+
+`remove` uses the exact reverse order (see [`remove`](#remove--r---purge-module)): modules in reverse topological order, units before entries, and inside a module, the reverse of the Situfile order.
+
 ## State
 
 ### Location
@@ -464,7 +483,7 @@ Required cases, at minimum:
 6. **Reference table**: each of the 8 `config` cases, for both `check` (status, exit code) and `install` (action, resulting state); `--force` on cases 5, 6 and 8, and on a dependency (no effect).
 7. **`file`, `dir`, `data`**: each row of their tables; mode and owner fixes; type mismatches (blocking, `--force` ignored); symbolic link at a destination.
 8. **Orphans**: each role.
-9. **Units**: each row of the `enable` and `start` tables; `reenable` and `restart` only when the module changed; `daemon-reload` only when a unit path changed; call order recorded by the fake follows the phases.
+9. **Units**: each row of the `enable` and `start` tables; `reenable` and `restart` only when the module changed; `daemon-reload` only when a unit path changed; call order recorded by the fake follows the phases, and inside a phase the Situfile order (reversed for `remove`).
 10. **Plan**: one blocking entry anywhere means nothing is applied.
 11. **Failure part way**: an apply error leaves no state written, and the next run converges. `sync()` (through the fake) is called after the last host change and before the first state write, for both `install` and `remove`.
 12. **`remove`**: refusal when required, several modules at once, `-r` keeping a dependency still required elsewhere, `--purge`, non-empty `dir` kept, `data` untouched, works with the repository absent.
