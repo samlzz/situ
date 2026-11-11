@@ -17,11 +17,15 @@ type App struct {
 	Stderr  io.Writer
 	Version func() string
 	Opts    Options
+	cmds    []command
+}
+
+func New(stdout, stderr io.Writer, version func() string) *App {
+	return &App{Stdout: stdout, Stderr: stderr, Version: version, cmds: commands()}
 }
 
 func Run(args []string, stdout, stderr io.Writer) int {
-	a := &App{Stdout: stdout, Stderr: stderr, Version: buildVersion}
-	return a.Main(args)
+	return New(stdout, stderr, buildVersion).Main(args)
 }
 
 func (a *App) Main(args []string) int {
@@ -37,7 +41,7 @@ func (a *App) Main(args []string) int {
 }
 
 func (a *App) Execute(args []string) error {
-	req, err := parseArgs(args)
+	req, err := a.parseArgs(args)
 	if err != nil {
 		return err
 	}
@@ -61,7 +65,7 @@ func (a *App) runVersion(request) error {
 
 func (a *App) runHelp(req request) error {
 	if len(req.targets) == 0 {
-		_, err := io.WriteString(a.Stdout, topUsage(help.Topics()))
+		_, err := io.WriteString(a.Stdout, topUsage(a.cmds, help.Topics()))
 		return err
 	}
 	name := req.targets[0]
@@ -72,7 +76,7 @@ func (a *App) runHelp(req request) error {
 		_, err := io.WriteString(a.Stdout, text)
 		return err
 	}
-	if _, isCmd := lookup(name); isCmd {
+	if _, isCmd := a.lookup(name); isCmd {
 		return exitcode.New(exitcode.Usage, "no help topic %q (use situ %s --help)", name, name)
 	}
 	return exitcode.New(exitcode.Usage, "no help topic %q (use situ help)", name)

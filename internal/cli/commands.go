@@ -130,12 +130,12 @@ print that topic.`,
 	}
 }
 
-func lookup(name string) (command, bool) {
-	i := slices.IndexFunc(commands(), func(c command) bool { return c.name == name })
+func (a *App) lookup(name string) (command, bool) {
+	i := slices.IndexFunc(a.cmds, func(c command) bool { return c.name == name })
 	if i < 0 {
 		return command{}, false
 	}
-	return commands()[i], true
+	return a.cmds[i], true
 }
 
 func notImplemented(_ *App, req request) error {

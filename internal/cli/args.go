@@ -25,14 +25,14 @@ func usagef(format string, a ...any) error {
 
 // parsed command line
 type request struct {
-	opts    Options
-	cmd     command
-	flags   map[string]bool
-	targets []string
+	opts          Options
+	cmd           command
+	flags         map[string]bool
+	targets       []string
 	help, version bool // ? when are set, nothing else runs
 }
 
-func parseArgs(args []string) (request, error) {
+func (a *App) parseArgs(args []string) (request, error) {
 	var req request
 	i := 0
 	// global options
@@ -72,7 +72,7 @@ loop:
 	// command
 	name := args[i]
 	var ok bool
-	if req.cmd, ok = lookup(name); !ok {
+	if req.cmd, ok = a.lookup(name); !ok {
 		return req, usagef("unknown command %q", name)
 	}
 	// command options

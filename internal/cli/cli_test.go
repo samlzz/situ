@@ -19,7 +19,7 @@ type result struct {
 
 func run(args ...string) result {
 	var out, errOut bytes.Buffer
-	a := &App{Stdout: &out, Stderr: &errOut, Version: func() string { return "situ v9.9.9" }}
+	a := New(&out, &errOut, func() string { return "situ v9.9.9" })
 	code := a.Main(args)
 	return result{code, out.String(), errOut.String()}
 }
@@ -48,9 +48,8 @@ func TestHelpTopLevel(t *testing.T) {
 func TestHelpEachCommand(t *testing.T) {
 	for _, c := range cmdNames {
 		r := run(c, "--help")
-		
-		if w := fmt.Sprintf("usage: situ [global options] %s", c);
-		r.code != 0 || r.errOut != "" || !strings.HasPrefix(r.out, w) {
+
+		if w := fmt.Sprintf("usage: situ [global options] %s", c); r.code != 0 || r.errOut != "" || !strings.HasPrefix(r.out, w) {
 			t.Errorf("%s --help: %+v", c, r)
 		}
 		if strings.Contains(r.out, "not implemented") {
@@ -186,7 +185,7 @@ func TestStubsExit3(t *testing.T) {
 
 func TestGlobalOptionsStored(t *testing.T) {
 	var out, errOut bytes.Buffer
-	a := &App{Stdout: &out, Stderr: &errOut, Version: func() string { return "" }}
+	a := New(&out, &errOut, func() string { return "" })
 	a.Main([]string{"-C", "one", "-C", "two", "--root", "/r1", "--root=/r2", "check"})
 	if a.Opts != (Options{Dir: "two", Root: "/r2"}) {
 		t.Fatalf("Opts = %+v", a.Opts)
