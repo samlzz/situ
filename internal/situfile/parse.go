@@ -26,7 +26,6 @@ type parser struct {
 	firstLine    int
 	firstIsFmt   bool
 	formatCount  int
-	dests        map[string]int
 	units        map[string]int
 }
 
@@ -35,7 +34,6 @@ func Parse(path string, data []byte, self ModuleID) (*Situfile, error) {
 	p := &parser{
 		sf:           &Situfile{Path: path},
 		self:         self,
-		dests:        map[string]int{},
 		units:        map[string]int{},
 	}
 	if line, msg := firstEncodingError(data); msg != "" {
@@ -121,8 +119,7 @@ func (p *parser) format(ln int, args []string) bool {
 	if !p.firstIsFmt {
 		p.errf(p.firstLine, "format must be the first statement")
 	}
-	if len(args) != 1 {
-		p.errf(ln, "format: expected 1 field, got %d", len(args))
+	if !p.count(ln, "format", args, 1) {
 		return true
 	}
 	if args[0] != "1" {
@@ -155,7 +152,11 @@ func (p *parser) count(ln int, kw string, args []string, want int) bool {
 	if len(args) == want {
 		return true
 	}
-	p.errf(ln, "%s: expected %d fields after the keyword, got %d", kw, want, len(args))
+	noun := "fields"
+	if want == 1 {
+		noun = "field"
+	}
+	p.errf(ln, "%s: expected %d %s after the keyword, got %d", kw, want, noun, len(args))
 	return false
 }
 
@@ -193,6 +194,9 @@ func (p *parser) entry(ln int, kw string, args []string) {
 			p.errf(ln, "%s: source must be \"-\", got %q", kw, args[2])
 			ok = false
 		}
+	} else if args[2] == "-" {
+		p.errf(ln, "%s: source is required (\"-\" means no source)", kw)
+		ok = false
 	} else if msg := checkSource(args[2]); msg != "" {
 		p.errf(ln, "%s", msg)
 		ok = false
@@ -208,12 +212,6 @@ func (p *parser) entry(ln int, kw string, args []string) {
 		ok = false
 	}
 
-	if first, dup := p.dests[args[3]]; dup {
-		p.errf(ln, "duplicate destination %q (first used at line %d)", args[3], first)
-		ok = false
-	} else {
-		p.dests[args[3]] = ln
-	}
 	if ok {
 		p.sf.Entries = append(p.sf.Entries, e)
 	}

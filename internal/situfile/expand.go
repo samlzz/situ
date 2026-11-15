@@ -43,7 +43,11 @@ func Expand(sf *Situfile, vars map[string]string) ([]Entry, error) {
 			continue
 		}
 		if first, dup := seen[e.Dest]; dup {
-			addErr(e.Line, "duplicate destination %q after expansion (first used at line %d)", e.Dest, first)
+			if strings.ContainsRune(orig, '$') {
+				addErr(e.Line, "duplicate destination %q (first used at line %d) (expanded from %q)", e.Dest, first, orig)
+			} else {
+				addErr(e.Line, "duplicate destination %q (first used at line %d)", e.Dest, first)
+			}
 			continue
 		}
 		seen[e.Dest] = e.Line
