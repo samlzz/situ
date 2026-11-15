@@ -108,7 +108,9 @@ the repository. A target starting with / is a path.`,
 			synopsis: "[<module>|<path>]",
 			summary:  "List modules, or find the owner of a path",
 			desc: `Without argument, list the modules. With a module, list its entries.
-With a path (starting with /), show which module entry owns it.`,
+With a path (starting with /), show which module entry owns it.
+Without a host profile, ${HOST} is printed unexpanded and duplicate
+destinations are not checked.`,
 			max: 1, paths: true,
 			run: notImplemented,
 		},

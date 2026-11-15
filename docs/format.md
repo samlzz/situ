@@ -31,7 +31,7 @@ file      0644  root:root  recipients.txt   /etc/etc-bundle/recipients.txt
 
 ## Lexical rules
 
-- The file is UTF-8 text with LF line endings. A carriage return anywhere is an error.
+- The file is UTF-8 text with LF line endings. A carriage return anywhere, or any byte sequence that is not valid UTF-8, is an error; only the first occurrence in the file is reported.
 - One statement per line. Blank lines and lines holding only whitespace are ignored.
 - Fields are separated by one or more spaces or tabs. Leading and trailing whitespace is ignored. Columns do not need to be aligned.
 - A field that starts with `#` starts a comment: it and the rest of the line are ignored. A `#` inside a field is a literal character (`a#b` is one field).
@@ -88,7 +88,7 @@ A path relative to the directory of the Situfile: `etc-bundle`, `files/app.conf`
 
 - It must not start with `/`, must not contain `.` or `..` components, empty components (`//`) or a trailing `/`.
 - It must name a regular file. A missing file, a directory or a symbolic link is an error.
-- For `dir` and `data`, the source field must be `-`.
+- For `dir` and `data`, the source field must be `-`. For `file` and `config`, `-` is not a source: it is an error.
 
 ### `<destination>`
 
@@ -116,15 +116,18 @@ The component a `requires` line depends on: `<component>` or `<category>/<compon
 
 These are errors:
 
-- two entries with the same destination (after expansion);
+- two entries with the same destination, compared after expansion for a host profile;
 - the same unit listed twice under the same role;
-- a target listed twice in `requires`, or a Situfile requiring itself.
+- a target listed twice in `requires` (a short and a full form of the same component count as twice)
+- A component requiring itself. A host profile is never a target, so a component that has the same name as the host profile is therefore not a self-requirement of the profile.
+
+A Situfile read without a host profile (for example by `situ list` when there is no profile) is not expanded, so duplicate destinations are not checked.
 
 Rules that span several modules (a destination owned by two modules, dependency cycles…) are defined in [spec.md](spec.md).
 
 ## Errors
 
-A Situfile that breaks any rule of this document is rejected before anything is done on the host. situ reports every error it finds as `<path>:<line>: <message>` on stderr and exits with code 2.
+A Situfile that breaks any rule of this document is rejected before anything is done on the host. situ reports every error it finds (except after an encoding error, where only the first is reported) as `<path>:<line>: <message>` on stderr and exits with code 2.
 
 ## Versioning
 
