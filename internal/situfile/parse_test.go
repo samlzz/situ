@@ -166,6 +166,8 @@ func TestParseErrors(t *testing.T) {
 		{"full target twice", hdr + "requires x/a\nrequires x/a\n", ModuleID{}, []string{"S:3: target \"x/a\" listed twice (first at line 2)"}},
 		{"short then full", hdr + "requires a\nrequires x/a\n", ModuleID{}, []string{"S:3: target \"x/a\" duplicates or is ambiguous with \"a\" (line 2)"}},
 		{"full then short", hdr + "requires x/a\nrequires a\n", ModuleID{}, []string{"S:3: target \"a\" duplicates or is ambiguous with \"x/a\" (line 2)"}},
+		{"ambiguous after two full", hdr + "requires x/a\nrequires y/a\nrequires a\n", ModuleID{}, []string{
+			"S:4: target \"a\" duplicates or is ambiguous with \"x/a\" (line 2)"}},
 		{"self short", hdr + "requires me\n", ModuleID{Category: "c", Component: "me"}, []string{"S:2: \"me\" requires itself"}},
 		{"self full", hdr + "requires c/me\n", ModuleID{Category: "c", Component: "me"}, []string{"S:2: \"c/me\" requires itself"}},
 		{"multiple errors", hdr + "file 0644 root a /a\nbogus\nenable x\n", ModuleID{}, []string{
@@ -199,6 +201,34 @@ func TestParseOtherSelfNotRejected(t *testing.T) {
 	_, err := Parse("S", []byte(hdr+"requires other/me\n"), ModuleID{Category: "c", Component: "me"})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestParseRequiresAccepted(t *testing.T) {
+	for name, tt := range map[string]struct {
+		src  string
+		self ModuleID
+	}{
+		"two categories": {hdr + "requires x/a\nrequires y/a\n", ModuleID{}},
+		"profile self":   {hdr + "requires pve-xps\n", ModuleID{Category: HostsDir, Component: "pve-xps"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := Parse("S", []byte(tt.src), tt.self); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestModuleIDIsProfile(t *testing.T) {
+	for id, want := range map[ModuleID]bool{
+		{Category: HostsDir, Component: "pve"}: true,
+		{Category: "c", Component: "pve"}:      false,
+		{Component: "hosts"}:                   false,
+	} {
+		if got := id.IsProfile(); got != want {
+			t.Errorf("%+v: %v", id, got)
+		}
 	}
 }
 

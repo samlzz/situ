@@ -28,8 +28,6 @@ type parser struct {
 	formatCount  int
 	dests        map[string]int
 	units        map[string]int
-	fullRequires map[string]int
-	shortReqs    map[string]int
 }
 
 // Parse reports every error of data as Errors; path is the display path.
@@ -39,8 +37,6 @@ func Parse(path string, data []byte, self ModuleID) (*Situfile, error) {
 		self:         self,
 		dests:        map[string]int{},
 		units:        map[string]int{},
-		fullRequires: map[string]int{},
-		shortReqs:    map[string]int{},
 	}
 	if line, msg := firstEncodingError(data); msg != "" {
 		p.errf(line, "%s", msg)
@@ -254,7 +250,7 @@ func (p *parser) requires(ln int, target string) {
 	case 1:
 		r = Require{Line: ln, ModuleID: ModuleID{Component: parts[0]}}
 	case 2:
-		if parts[0] == "hosts" {
+		if parts[0] == HostsDir {
 			p.errf(ln, "invalid requires target %q: a host profile cannot be a target", target)
 			return
 		}
@@ -263,33 +259,21 @@ func (p *parser) requires(ln int, target string) {
 		p.errf(ln, "invalid requires target %q (want <component> or <category>/<component>)", target)
 		return
 	}
-	if r.Component == p.self.Component && p.self.Component != "" && (r.Category == "" || r.Category == p.self.Category) {
+	if !p.self.IsProfile() && (r.ModuleID == p.self || r.Category == "" && r.Component == p.self.Component) {
 		p.errf(ln, "%q requires itself", target)
 		return
 	}
-	// A short and a full form of the same name are always a duplicate or ambiguous.
-	if r.Category == "" {
-		if first, dup := p.shortReqs[r.Component]; dup {
-			p.errf(ln, "target %q listed twice (first at line %d)", target, first)
+	// A short and a full form of the same component are always a duplicate
+	// or ambiguous; two full forms with different categories are distinct.
+	for _, prev := range p.sf.Requires {
+		if prev.ModuleID == r.ModuleID {
+			p.errf(ln, "target %q listed twice (first at line %d)", target, prev.Line)
 			return
 		}
-		for full, first := range p.fullRequires {
-			if strings.HasSuffix(full, "/"+r.Component) {
-				p.errf(ln, "target %q duplicates or is ambiguous with %q (line %d)", target, full, first)
-				return
-			}
-		}
-		p.shortReqs[r.Component] = ln
-	} else {
-		if first, dup := p.fullRequires[target]; dup {
-			p.errf(ln, "target %q listed twice (first at line %d)", target, first)
+		if prev.Component == r.Component && (prev.Category == "" || r.Category == "") {
+			p.errf(ln, "target %q duplicates or is ambiguous with %q (line %d)", target, prev.String(), prev.Line)
 			return
 		}
-		if first, dup := p.shortReqs[r.Component]; dup {
-			p.errf(ln, "target %q duplicates or is ambiguous with %q (line %d)", target, r.Component, first)
-			return
-		}
-		p.fullRequires[target] = ln
 	}
 	p.sf.Requires = append(p.sf.Requires, r)
 }

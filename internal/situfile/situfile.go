@@ -68,6 +68,12 @@ func (m ModuleID) String() string {
 	return m.Category + "/" + m.Component
 }
 
+// HostsDir is the repository directory holding the host profiles.
+const HostsDir = "hosts"
+
+// IsProfile reports whether m is a host profile.
+func (m ModuleID) IsProfile() bool { return m.Category == HostsDir }
+
 // Require holds target as written, short form included;
 // resolution needs the whole repository.
 type Require struct {
