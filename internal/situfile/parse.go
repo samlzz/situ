@@ -42,17 +42,13 @@ func Parse(path string, data []byte, self ModuleID) (*Situfile, error) {
 		fullRequires: map[string]int{},
 		shortReqs:    map[string]int{},
 	}
+	if line, msg := firstEncodingError(data); msg != "" {
+		p.errf(line, "%s", msg)
+		return nil, p.errs
+	}
 	stopped := false
 	for i, raw := range strings.Split(string(data), "\n") {
 		ln := i + 1
-		if strings.ContainsRune(raw, '\r') {
-			p.errf(ln, "carriage return is not allowed (LF line endings only)")
-			continue
-		}
-		if !utf8.ValidString(raw) {
-			p.errf(ln, "invalid UTF-8")
-			continue
-		}
 		fields := splitFields(raw)
 		if len(fields) == 0 {
 			continue
@@ -84,6 +80,26 @@ func Parse(path string, data []byte, self ModuleID) (*Situfile, error) {
 		return nil, p.errs
 	}
 	return p.sf, nil
+}
+
+// firstEncodingError returns the line and message of the first carriage
+// return or invalid UTF-8 byte of data, or "" when there is none.
+func firstEncodingError(data []byte) (line int, msg string) {
+	line = 1
+	for i := 0; i < len(data); {
+		if data[i] == '\n' {
+			line++
+		}
+		if data[i] == '\r' {
+			return line, "carriage return is not allowed (LF line endings only)"
+		}
+		r, size := utf8.DecodeRune(data[i:])
+		if r == utf8.RuneError && size == 1 {
+			return line, "invalid UTF-8"
+		}
+		i += size
+	}
+	return 0, ""
 }
 
 func (p *parser) errf(line int, format string, a ...any) {

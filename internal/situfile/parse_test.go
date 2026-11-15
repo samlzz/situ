@@ -110,10 +110,12 @@ func TestParseErrors(t *testing.T) {
 		{"format version 01", "format 01\n", ModuleID{}, []string{"S:1: unsupported format version \"01\" (this situ reads version 1)"}},
 		{"format no field", "format\n", ModuleID{}, []string{"S:1: format: expected 1 field, got 0"}},
 		{"format two fields", "format 1 2\n", ModuleID{}, []string{"S:1: format: expected 1 field, got 2"}},
-		{"CR", "format 1\r\nenable a.service\n", ModuleID{}, []string{
-			"S:1: carriage return is not allowed (LF line endings only)", "S:2: missing format statement"}},
+		{"CRLF file", "format 1\r\nenable a.service\n", ModuleID{}, []string{
+			"S:1: carriage return is not allowed (LF line endings only)"}},
 		{"CR in comment", hdr + "# x\r\n", ModuleID{}, []string{"S:2: carriage return is not allowed (LF line endings only)"}},
 		{"invalid UTF-8", hdr + "# \xff\n", ModuleID{}, []string{"S:2: invalid UTF-8"}},
+		{"invalid UTF-8 only error", "bogus\nenable x\n# \xff\nfile y\n", ModuleID{}, []string{"S:3: invalid UTF-8"}},
+		{"first encoding error wins", hdr + "# \xff\n\n# x\r\n", ModuleID{}, []string{"S:2: invalid UTF-8"}},
 		{"unknown keyword", hdr + "bogus x\n", ModuleID{}, []string{"S:2: unknown keyword \"bogus\""}},
 		{"keyword case", hdr + "File 0644 root:root a /a\n", ModuleID{}, []string{"S:2: unknown keyword \"File\""}},
 		{"file too few", hdr + "file 0644 root:root a\n", ModuleID{}, []string{"S:2: file: expected 4 fields after the keyword, got 3"}},
