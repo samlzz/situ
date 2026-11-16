@@ -25,7 +25,7 @@ func errLines(t *testing.T, err error) []string {
 	}
 	out := make([]string, len(errs))
 	for i, e := range errs {
-		out[i] = e.Error()
+		out[i] = e.String()
 	}
 	return out
 }

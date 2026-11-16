@@ -11,13 +11,14 @@ import (
 	"github.com/samlzz/situ/internal/exitcode"
 )
 
+// LineError is one line of Errors. It is not an error on its own.
 type LineError struct {
 	Path string
 	Line int
 	Msg  string
 }
 
-func (e *LineError) Error() string {
+func (e LineError) String() string {
 	return fmt.Sprintf("%s:%d: %s", e.Path, e.Line, e.Msg)
 }
 
@@ -27,7 +28,7 @@ type Errors []LineError
 func (e Errors) Error() string {
 	lines := make([]string, len(e))
 	for i, le := range e {
-		lines[i] = le.Error()
+		lines[i] = le.String()
 	}
 	return strings.Join(lines, "\n")
 }
