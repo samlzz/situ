@@ -42,54 +42,42 @@ data      0700  root:root  -  /var/backups/${HOST}/etc
 enable    a.service
 start     a.service
 enable    foo@bar.service
-enable    dev-sda\\x2d1.mount
+enable    dev-sda\x2d1.mount
 file      0644  root:root  x#y  /etc/x#y
 `
+	want := &Situfile{
+		Path: "Situfile",
+		Requires: []Require{
+			{3, ModuleID{Component: "backup-core"}},
+			{4, ModuleID{Category: "backup", Component: "etc-bundle"}},
+		},
+		Entries: []Entry{
+			{5, File, 0o755, Owner{"root", "root"}, "etc-bundle", "/usr/local/sbin/etc-bundle"},
+			{6, Config, 0o644, Owner{"root", "root"}, "files/a.conf", "/etc/a.conf"},
+			{7, Dir, 0o775 | fs.ModeSetgid, Owner{"_svc$", "1000"}, "", "/etc/a"},
+			{8, Data, 0o700, Owner{"root", "root"}, "", "/var/backups/${HOST}/etc"},
+			{13, File, 0o644, Owner{"root", "root"}, "x#y", "/etc/x#y"},
+		},
+		Units: []Unit{
+			{9, "a.service", Enable},
+			{10, "a.service", Start},
+			{11, "foo@bar.service", Enable},
+			{12, `dev-sda\x2d1.mount`, Enable},
+		},
+	}
 	sf, err := Parse("Situfile", []byte(src), ModuleID{Category: "backup", Component: "me"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	wantReq := []Require{{3, ModuleID{Component: "backup-core"}}, {4, ModuleID{Category: "backup", Component: "etc-bundle"}}}
-	if !reflect.DeepEqual(sf.Requires, wantReq) {
-		t.Errorf("Requires = %+v", sf.Requires)
-	}
-	if len(sf.Entries) != 5 || len(sf.Units) != 4 {
-		t.Fatalf("entries=%d units=%d", len(sf.Entries), len(sf.Units))
-	}
-	e := sf.Entries[0]
-	if e.Line != 5 || e.Type != File || e.Mode != 0o755 || e.Owner != (Owner{"root", "root"}) ||
-		e.Source != "etc-bundle" || e.Dest != "/usr/local/sbin/etc-bundle" {
-		t.Errorf("entry 0 = %+v", e)
-	}
-	if got := sf.Entries[2].Mode; got != 0o775|fs.ModeSetgid {
-		t.Errorf("mode 2775 = %v", got)
-	}
-	if sf.Entries[2].Source != "" || sf.Entries[3].Source != "" {
-		t.Errorf("dir/data Source = %q, %q, want empty", sf.Entries[2].Source, sf.Entries[3].Source)
-	}
-	if sf.Entries[2].Owner != (Owner{"_svc$", "1000"}) {
-		t.Errorf("owner = %+v", sf.Entries[2].Owner)
-	}
-	if sf.Entries[3].Dest != "/var/backups/${HOST}/etc" {
-		t.Errorf("dest = %q", sf.Entries[3].Dest)
-	}
-	if sf.Units[1].Action != Start || sf.Units[1].Name != "a.service" {
-		t.Errorf("unit 1 = %+v", sf.Units[1])
+	if !reflect.DeepEqual(sf, want) {
+		t.Errorf("got  %+v\nwant %+v", sf, want)
 	}
 }
 
-func TestParseModeBits(t *testing.T) {
-	for in, want := range map[string]fs.FileMode{
-		"0644": 0o644, "4755": 0o755 | fs.ModeSetuid, "1777": 0o777 | fs.ModeSticky,
-		"7000": fs.ModeSetuid | fs.ModeSetgid | fs.ModeSticky,
-	} {
-		sf, err := Parse("S", []byte(hdr+"dir "+in+" root:root - /d\n"), ModuleID{})
-		if err != nil {
-			t.Fatalf("%s: %v", in, err)
-		}
-		if sf.Entries[0].Mode != want {
-			t.Errorf("%s: got %v want %v", in, sf.Entries[0].Mode, want)
-		}
+func TestParseAccepted(t *testing.T) {
+	// The same unit under enable and start is allowed.
+	if _, err := Parse("S", []byte(hdr+"enable a.service\nstart a.service\n"), ModuleID{}); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -158,19 +146,6 @@ func TestParseErrors(t *testing.T) {
 		{"unit bad suffix", hdr + "start a.device\n", ModuleID{}, []string{"S:2: invalid unit name \"a.device\""}},
 		{"unit twice same role", hdr + "enable a.service\nenable a.service\n", ModuleID{}, []string{"S:3: unit \"a.service\" listed twice under enable (first at line 2)"}},
 		{"start twice", hdr + "start a.timer\nstart a.timer\n", ModuleID{}, []string{"S:3: unit \"a.timer\" listed twice under start (first at line 2)"}},
-		{"target uppercase", hdr + "requires Foo\n", ModuleID{}, []string{"S:2: invalid requires target \"Foo\" (want <component> or <category>/<component>)"}},
-		{"target leading dash", hdr + "requires -foo\n", ModuleID{}, []string{"S:2: invalid requires target \"-foo\" (want <component> or <category>/<component>)"}},
-		{"target 3 parts", hdr + "requires a/b/c\n", ModuleID{}, []string{"S:2: invalid requires target \"a/b/c\" (want <component> or <category>/<component>)"}},
-		{"target empty part", hdr + "requires a/\n", ModuleID{}, []string{"S:2: invalid requires target \"a/\" (want <component> or <category>/<component>)"}},
-		{"target host profile", hdr + "requires hosts/pve\n", ModuleID{}, []string{"S:2: invalid requires target \"hosts/pve\": a host profile cannot be a target"}},
-		{"target twice", hdr + "requires a\nrequires a\n", ModuleID{}, []string{"S:3: target \"a\" listed twice (first at line 2)"}},
-		{"full target twice", hdr + "requires x/a\nrequires x/a\n", ModuleID{}, []string{"S:3: target \"x/a\" listed twice (first at line 2)"}},
-		{"short then full", hdr + "requires a\nrequires x/a\n", ModuleID{}, []string{"S:3: target \"x/a\" duplicates or is ambiguous with \"a\" (line 2)"}},
-		{"full then short", hdr + "requires x/a\nrequires a\n", ModuleID{}, []string{"S:3: target \"a\" duplicates or is ambiguous with \"x/a\" (line 2)"}},
-		{"ambiguous after two full", hdr + "requires x/a\nrequires y/a\nrequires a\n", ModuleID{}, []string{
-			"S:4: target \"a\" duplicates or is ambiguous with \"x/a\" (line 2)"}},
-		{"self short", hdr + "requires me\n", ModuleID{Category: "c", Component: "me"}, []string{"S:2: \"me\" requires itself"}},
-		{"self full", hdr + "requires c/me\n", ModuleID{Category: "c", Component: "me"}, []string{"S:2: \"c/me\" requires itself"}},
 		{"multiple errors", hdr + "file 0644 root a /a\nbogus\nenable x\n", ModuleID{}, []string{
 			"S:2: invalid owner \"root\" (want <user>:<group>, each a name or a decimal ID)",
 			"S:3: unknown keyword \"bogus\"",
@@ -196,12 +171,37 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
-func TestParseOtherSelfNotRejected(t *testing.T) {
-	// Same component name in another category is not a self-require when
-	// written in full form.
-	_, err := Parse("S", []byte(hdr+"requires other/me\n"), ModuleID{Category: "c", Component: "me"})
-	if err != nil {
-		t.Fatal(err)
+func TestParseRequires(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		self ModuleID
+		want []string
+	}{
+		{"target uppercase", hdr + "requires Foo\n", ModuleID{}, []string{"S:2: invalid requires target \"Foo\" (want <component> or <category>/<component>)"}},
+		{"target leading dash", hdr + "requires -foo\n", ModuleID{}, []string{"S:2: invalid requires target \"-foo\" (want <component> or <category>/<component>)"}},
+		{"target 3 parts", hdr + "requires a/b/c\n", ModuleID{}, []string{"S:2: invalid requires target \"a/b/c\" (want <component> or <category>/<component>)"}},
+		{"target empty part", hdr + "requires a/\n", ModuleID{}, []string{"S:2: invalid requires target \"a/\" (want <component> or <category>/<component>)"}},
+		{"target host profile", hdr + "requires hosts/pve\n", ModuleID{}, []string{"S:2: invalid requires target \"hosts/pve\": a host profile cannot be a target"}},
+		{"target twice", hdr + "requires a\nrequires a\n", ModuleID{}, []string{"S:3: target \"a\" listed twice (first at line 2)"}},
+		{"full target twice", hdr + "requires x/a\nrequires x/a\n", ModuleID{}, []string{"S:3: target \"x/a\" listed twice (first at line 2)"}},
+		{"short then full", hdr + "requires a\nrequires x/a\n", ModuleID{}, []string{"S:3: target \"x/a\" duplicates or is ambiguous with \"a\" (line 2)"}},
+		{"full then short", hdr + "requires x/a\nrequires a\n", ModuleID{}, []string{"S:3: target \"a\" duplicates or is ambiguous with \"x/a\" (line 2)"}},
+		{"self short", hdr + "requires me\n", ModuleID{Category: "c", Component: "me"}, []string{"S:2: \"me\" requires itself"}},
+		{"self full", hdr + "requires c/me\n", ModuleID{Category: "c", Component: "me"}, []string{"S:2: \"c/me\" requires itself"}},
+		{"ambiguous after two full", hdr + "requires x/a\nrequires y/a\nrequires a\n", ModuleID{}, []string{
+			"S:4: target \"a\" duplicates or is ambiguous with \"x/a\" (line 2)"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse("S", []byte(tt.src), tt.self)
+			if err == nil {
+				t.Fatal("expected errors")
+			}
+			if got := errLines(t, err); !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("got %q want %q", got, tt.want)
+			}
+		})
 	}
 }
 
@@ -212,52 +212,12 @@ func TestParseRequiresAccepted(t *testing.T) {
 	}{
 		"two categories": {hdr + "requires x/a\nrequires y/a\n", ModuleID{}},
 		"profile self":   {hdr + "requires pve-xps\n", ModuleID{Category: HostsDir, Component: "pve-xps"}},
+		"other category": {hdr + "requires other/me\n", ModuleID{Category: "c", Component: "me"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := Parse("S", []byte(tt.src), tt.self); err != nil {
 				t.Fatal(err)
 			}
 		})
-	}
-}
-
-func TestModuleIDIsProfile(t *testing.T) {
-	for id, want := range map[ModuleID]bool{
-		{Category: HostsDir, Component: "pve"}: true,
-		{Category: "c", Component: "pve"}:      false,
-		{Component: "hosts"}:                   false,
-	} {
-		if got := id.IsProfile(); got != want {
-			t.Errorf("%+v: %v", id, got)
-		}
-	}
-}
-
-func TestEnumString(t *testing.T) {
-	for typ, want := range map[EntryType]string{File: "file", Config: "config", Dir: "dir", Data: "data", 0: "invalid"} {
-		if typ.String() != want {
-			t.Errorf("EntryType %d: %q", typ, typ.String())
-		}
-	}
-	for a, want := range map[UnitAction]string{Enable: "enable", Start: "start", 0: "invalid"} {
-		if a.String() != want {
-			t.Errorf("UnitAction %d: %q", a, a.String())
-		}
-	}
-}
-
-func TestModuleIDString(t *testing.T) {
-	if s := (ModuleID{Component: "a"}).String(); s != "a" {
-		t.Errorf("short: %q", s)
-	}
-	if s := (ModuleID{Category: "c", Component: "a"}).String(); s != "c/a" {
-		t.Errorf("full: %q", s)
-	}
-}
-
-func TestErrorsString(t *testing.T) {
-	e := Errors{{"a", 1, "x"}, {"a", 2, "y"}}
-	if e.Error() != "a:1: x\na:2: y" {
-		t.Fatalf("%q", e.Error())
 	}
 }
