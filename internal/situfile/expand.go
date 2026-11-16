@@ -2,55 +2,36 @@
 
 package situfile
 
-import (
-	"fmt"
-	"strings"
-)
+import "strings"
 
 // Expand returns the entries with variables replaced in Dest.
 // Rejects two entries with the same expanded destination.
 func Expand(sf *Situfile, vars map[string]string) ([]Entry, error) {
 	var errs Errors
-	addErr := func(line int, format string, a ...any) {
-		errs = append(errs, LineError{Path: sf.Path, Line: line, Msg: fmt.Sprintf(format, a...)})
-	}
 	out := make([]Entry, 0, len(sf.Entries))
 	seen := map[string]int{}
 
 	for _, e := range sf.Entries {
-		var b strings.Builder
 		orig := e.Dest
-		rest := e.Dest
-		msg := checkVars(e.Dest, func(name string) bool { _, ok := vars[name]; return ok })
+		dest, msg := substVars(orig, vars)
 		if msg != "" {
-			addErr(e.Line, "%s", msg)
+			errs.add(sf.Path, e.Line, "%s", msg)
 			continue
 		}
-		for {
-			i := strings.Index(rest, "${")
-			if i < 0 {
-				b.WriteString(rest)
-				break
-			}
-			end := strings.IndexByte(rest[i:], '}')
-			b.WriteString(rest[:i])
-			b.WriteString(vars[rest[i+2:i+end]])
-			rest = rest[i+end+1:]
-		}
-		e.Dest = b.String()
-		if msg := checkDest(e.Dest); msg != "" {
-			addErr(e.Line, "%s (expanded from %q)", msg, orig)
+		e.Dest = dest
+		if msg := checkDest(dest); msg != "" {
+			errs.add(sf.Path, e.Line, "%s (expanded from %q)", msg, orig)
 			continue
 		}
-		if first, dup := seen[e.Dest]; dup {
+		if first, dup := seen[dest]; dup {
 			if strings.ContainsRune(orig, '$') {
-				addErr(e.Line, "duplicate destination %q (first used at line %d) (expanded from %q)", e.Dest, first, orig)
+				errs.add(sf.Path, e.Line, "duplicate destination %q (first used at line %d) (expanded from %q)", dest, first, orig)
 			} else {
-				addErr(e.Line, "duplicate destination %q (first used at line %d)", e.Dest, first)
+				errs.add(sf.Path, e.Line, "duplicate destination %q (first used at line %d)", dest, first)
 			}
 			continue
 		}
-		seen[e.Dest] = e.Line
+		seen[dest] = e.Line
 		out = append(out, e)
 	}
 	if len(errs) > 0 {

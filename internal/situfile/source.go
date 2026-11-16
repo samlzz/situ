@@ -20,12 +20,12 @@ func CheckSources(sf *Situfile, moduleDir string) error {
 		if e.Type != File && e.Type != Config {
 			continue
 		}
-		msg, err := checkSource1(moduleDir, e.Source)
+		msg, err := statSource(moduleDir, e.Source)
 		if err != nil {
 			return exitcode.Wrap(exitcode.System, err)
 		}
 		if msg != "" {
-			errs = append(errs, LineError{Path: sf.Path, Line: e.Line, Msg: msg})
+			errs.add(sf.Path, e.Line, "%s", msg)
 		}
 	}
 	if len(errs) > 0 {
@@ -34,7 +34,7 @@ func CheckSources(sf *Situfile, moduleDir string) error {
 	return nil
 }
 
-func checkSource1(moduleDir, source string) (string, error) {
+func statSource(moduleDir, source string) (string, error) {
 	parts := strings.Split(source, "/")
 	cur := moduleDir
 	for i, c := range parts {

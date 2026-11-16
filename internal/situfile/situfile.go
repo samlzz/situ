@@ -5,6 +5,12 @@ package situfile
 
 import "io/fs"
 
+// Directories of a repository holding components and host profiles.
+const (
+	ComponentsDir = "components"
+	HostsDir      = "hosts"
+)
+
 // ### Enums ###
 
 type EntryType int
@@ -50,12 +56,14 @@ func (a UnitAction) String() string {
 // ### Structs ###
 
 type Situfile struct {
-	Path       string
-	Requires   []Require
-	Entries    []Entry
-	Units      []Unit
+	Path     string
+	Requires []Require
+	Entries  []Entry
+	Units    []Unit
 }
 
+// ModuleID names a module. Category is empty for the short form of a
+// target. A host profile is ModuleID{Category: HostsDir, Component: <host>}.
 type ModuleID struct {
 	Category  string
 	Component string
@@ -67,9 +75,6 @@ func (m ModuleID) String() string {
 	}
 	return m.Category + "/" + m.Component
 }
-
-// HostsDir is the repository directory holding the host profiles.
-const HostsDir = "hosts"
 
 // IsProfile reports whether m is a host profile.
 func (m ModuleID) IsProfile() bool { return m.Category == HostsDir }

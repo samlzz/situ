@@ -3,7 +3,9 @@
 package situfile
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/samlzz/situ/internal/exitcode"
@@ -31,3 +33,11 @@ func (e Errors) Error() string {
 }
 
 func (Errors) ExitCode() int { return exitcode.Usage }
+
+func (e *Errors) add(path string, line int, format string, a ...any) {
+	*e = append(*e, LineError{Path: path, Line: line, Msg: fmt.Sprintf(format, a...)})
+}
+
+func (e Errors) sortByLine() {
+	slices.SortStableFunc(e, func(a, b LineError) int { return cmp.Compare(a.Line, b.Line) })
+}
