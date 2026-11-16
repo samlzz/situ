@@ -53,11 +53,11 @@ func TestExpandErrors(t *testing.T) {
 		{"recheck: root", "dir 0755 root:root - /${HOST}\n", map[string]string{"HOST": ""},
 			[]string{"S:2: destination must not be \"/\" (expanded from \"/${HOST}\")"}},
 		{"literal duplicate", "dir 0755 root:root - /a\nfile 0644 root:root x /a\n", map[string]string{},
-			[]string{"S:3: duplicate destination \"/a\" (first used at line 2)"}},
+			[]string{"S:3: duplicate destination \"/a\", first used at line 2"}},
 		{"expanded duplicate", "dir 0755 root:root - /a/${HOST}\ndir 0755 root:root - /a/h1\n", map[string]string{"HOST": "h1"},
-			[]string{"S:3: duplicate destination \"/a/h1\" (first used at line 2)"}},
+			[]string{"S:3: duplicate destination \"/a/h1\", first used at line 2"}},
 		{"expanded duplicate, later has variable", "dir 0755 root:root - /a/h1\ndir 0755 root:root - /a/${HOST}\n", map[string]string{"HOST": "h1"},
-			[]string{"S:3: duplicate destination \"/a/h1\" (first used at line 2) (expanded from \"/a/${HOST}\")"}},
+			[]string{"S:3: duplicate destination \"/a/h1\" (expanded from \"/a/${HOST}\"), first used at line 2"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

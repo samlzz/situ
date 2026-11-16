@@ -2,7 +2,7 @@
 
 package situfile
 
-import "strings"
+import "fmt"
 
 // Expand returns the entries with variables replaced in Dest.
 // Rejects two entries with the same expanded destination.
@@ -19,16 +19,16 @@ func Expand(sf *Situfile, vars map[string]string) ([]Entry, error) {
 			continue
 		}
 		e.Dest = dest
+		note := ""
+		if dest != orig {
+			note = fmt.Sprintf(" (expanded from %q)", orig)
+		}
 		if msg := checkDest(dest); msg != "" {
-			errs.add(sf.Path, e.Line, "%s (expanded from %q)", msg, orig)
+			errs.add(sf.Path, e.Line, "%s%s", msg, note)
 			continue
 		}
 		if first, dup := seen[dest]; dup {
-			if strings.ContainsRune(orig, '$') {
-				errs.add(sf.Path, e.Line, "duplicate destination %q (first used at line %d) (expanded from %q)", dest, first, orig)
-			} else {
-				errs.add(sf.Path, e.Line, "duplicate destination %q (first used at line %d)", dest, first)
-			}
+			errs.add(sf.Path, e.Line, "duplicate destination %q%s, first used at line %d", dest, note, first)
 			continue
 		}
 		seen[dest] = e.Line
