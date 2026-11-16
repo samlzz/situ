@@ -108,7 +108,7 @@ The order of statements in a Situfile never changes what situ does (see [format.
 
 Reading (every command). Each stage starts only when the previous one has succeeded:
 
-1. Each Situfile is read and checked on its own (every rule of [format.md](format.md) that needs no other module); all its errors are reported together, sorted by line.
+1. Each Situfile is read and checked on its own (every rule of [format.md](format.md) that needs no other module); all its errors are reported together, sorted by line, except after an encoding error (carriage return or invalid UTF-8): reading stops and only that error is reported (see [format.md](format.md)).
 2. `requires` build the graph of the run (see [The graph](#the-graph)): missing targets, ambiguity and cycles.
 3. Entries: destinations are expanded for the profile, sources are checked, then duplicate destinations across modules and the [parents](#parents-of-destinations) are checked.
 4. Units: duplicate units across modules are checked.

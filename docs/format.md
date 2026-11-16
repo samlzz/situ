@@ -118,8 +118,8 @@ These are errors:
 
 - two entries with the same destination, compared after expansion for a host profile;
 - the same unit listed twice under the same role;
-- a target listed twice in `requires` (a short and a full form of the same component count as twice)
-- A component requiring itself. A host profile is never a target, so a component that has the same name as the host profile is therefore not a self-requirement of the profile.
+- a target listed twice in `requires` (a short and a full form of the same component count as twice);
+- a component requiring itself. A host profile is never a target, so a component that has the same name as the host profile is not a self-requirement of the profile.
 
 A Situfile read without a host profile (for example by `situ list` when there is no profile) is not expanded, so duplicate destinations are not checked.
 
