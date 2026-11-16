@@ -22,7 +22,7 @@ func CheckSources(sf *Situfile, moduleDir string) error {
 		}
 		msg, err := statSource(moduleDir, e.Source)
 		if err != nil {
-			return exitcode.Wrap(exitcode.System, err)
+			return exitcode.Wrap(exitcode.System, fmt.Errorf("%s:%d: source %q: %w", sf.Path, e.Line, e.Source, err))
 		}
 		if msg != "" {
 			errs.add(sf.Path, e.Line, "%s", msg)

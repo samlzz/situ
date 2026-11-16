@@ -12,6 +12,7 @@ import (
 	"github.com/samlzz/situ/internal/help"
 )
 
+// App is the situ command line. Create it with New: the zero value has no commands.
 type App struct {
 	Stdout  io.Writer
 	Stderr  io.Writer

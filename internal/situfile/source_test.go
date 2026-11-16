@@ -3,9 +3,13 @@
 package situfile
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/samlzz/situ/internal/exitcode"
@@ -67,8 +71,15 @@ func TestCheckSourcesIOError(t *testing.T) {
 	if _, err := os.Lstat(filepath.Join(locked, "x")); err == nil || os.IsNotExist(err) {
 		t.Skip("directory permissions not enforced (running as root?)")
 	}
-	err := CheckSources(parseOK(t, "file 0644 root:root locked/x /d\n"), dir)
+	sf := parseOK(t, "file 0644 root:root locked/x /d\n")
+	err := CheckSources(sf, dir)
 	if err == nil || exitcode.CodeOf(err) != exitcode.System {
 		t.Fatalf("err = %v, code %d, want code 3", err, exitcode.CodeOf(err))
+	}
+	if want := fmt.Sprintf("S:%d: source \"locked/x\": ", sf.Entries[0].Line); !strings.HasPrefix(err.Error(), want) {
+		t.Fatalf("err = %q, want prefix %q", err, want)
+	}
+	if !errors.Is(err, fs.ErrPermission) {
+		t.Fatalf("err = %v, want it to wrap fs.ErrPermission", err)
 	}
 }
