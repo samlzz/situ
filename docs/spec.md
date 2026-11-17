@@ -58,6 +58,7 @@ Commands and their direction:
 ```
 
 - Category, component and host names match `[a-z0-9][a-z0-9-]*`.
+- A category named `hosts` is an error (code 2), reported when `components/` is scanned: `hosts/<host>` always designates a host profile.
 - Every directory at `components/<category>/<component>/` and `hosts/<host>/` must contain a `Situfile`. A directory at that depth without one is an error (code 2), reported only when situ needs to scan that level.
 - Other files and directories of the repository are ignored.
 
@@ -101,6 +102,8 @@ Order: modules are processed in a topological order, dependencies first. Ties ar
 ### Parents of destinations
 
 The parent directory of every destination must either exist on the host as a directory, or be the destination of a `dir` or `data` entry of the graph. Otherwise the plan fails with code 2 (the Situfile is incomplete). situ never creates undeclared parent directories.
+
+A parent that is a symbolic link to a directory counts as a directory. `list` does not check parents: it never reads the host.
 
 ### Order of processing
 
@@ -378,6 +381,21 @@ components/backup/etc-bundle/Situfile:7: config  0644  root:root  etc-bundle.def
 $ situ list /var/backups/pve-xps/etc
 components/backup/etc-bundle/Situfile:9: data  0700  root:root  -  /var/backups/${HOST}/etc  (hosts/pve-xps)
 ```
+
+Layout of the listing without argument: first the dependency tree of the profile, one module per line (`components/<category>/<component>` or `hosts/<host>`), each level indented by two spaces below the module that requires it, children sorted by name. A module already shown elsewhere in the tree is shown again with ` (above)` after its name, without its own dependencies. Then, for each module in the order of the graph, a blank line and a block: the module name, then, indented by two spaces, its `requires` (in full form), its entries and its units, each with its fields separated by two spaces.
+
+```
+hosts/pve-xps
+  components/backup/etc-bundle
+    components/backup/backup-core
+
+components/backup/backup-core
+  file  0755  root:root  backup-core  /usr/local/sbin/backup-core
+  dir  0750  root:root  -  /var/backups
+...
+```
+
+With a module, only its block is printed.
 
 ### `version`
 
