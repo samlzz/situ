@@ -84,8 +84,6 @@ func checkSourceField(typ EntryType, s string) string {
 	return checkSourcePath(s)
 }
 
-// validName reports whether s matches [a-z0-9][a-z0-9-]*, the name of a
-// category or component.
 func validName(s string) bool {
 	if s == "" {
 		return false

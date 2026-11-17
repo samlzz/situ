@@ -39,6 +39,16 @@ func (e *Errors) add(path string, line int, format string, a ...any) {
 	*e = append(*e, LineError{Path: path, Line: line, Msg: fmt.Sprintf(format, a...)})
 }
 
+// Add appends an error; it is for callers that check several Situfiles.
+func (e *Errors) Add(path string, line int, format string, a ...any) { e.add(path, line, format, a...) }
+
 func (e Errors) sortByLine() {
 	slices.SortStableFunc(e, func(a, b LineError) int { return cmp.Compare(a.Line, b.Line) })
+}
+
+// Sort orders the errors of several Situfiles by path, then line.
+func (e Errors) Sort() {
+	slices.SortStableFunc(e, func(a, b LineError) int {
+		return cmp.Or(cmp.Compare(a.Path, b.Path), cmp.Compare(a.Line, b.Line))
+	})
 }

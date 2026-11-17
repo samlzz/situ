@@ -102,6 +102,7 @@ type Entry struct {
 	Dest   string
 }
 
+// Unit is an action on a unit, start or enable.
 type Unit struct {
 	Line   int
 	Name   string
