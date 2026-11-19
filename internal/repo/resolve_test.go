@@ -58,7 +58,12 @@ func TestCurrentProfile(t *testing.T) {
 	if got, ok, err := r.CurrentProfile("pve.example.org"); err != nil || !ok || got != host("pve") {
 		t.Errorf("FQDN = %v %v %v", got, ok, err)
 	}
-	for _, h := range []string{"other", "", "PVE", "afile", ".x", "-bad"} {
+	for _, h := range []string{"PVE", "Pve.Example.org"} {
+		if got, ok, err := r.CurrentProfile(h); err != nil || !ok || got != host("pve") {
+			t.Errorf("%q = %v %v %v, want pve", h, got, ok, err)
+		}
+	}
+	for _, h := range []string{"other", "", "afile", ".x", "-bad"} {
 		if _, ok, err := r.CurrentProfile(h); ok || err != nil {
 			t.Errorf("%q: ok=%v err=%v, want no profile", h, ok, err)
 		}

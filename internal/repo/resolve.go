@@ -103,6 +103,7 @@ func (r *Repo) ResolveName(name string) (situfile.ModuleID, error) {
 // Situfile is an error (code 2).
 func (r *Repo) CurrentProfile(hostname string) (situfile.ModuleID, bool, error) {
 	name, _, _ := strings.Cut(hostname, ".")
+	name = strings.ToLower(name)
 	if !situfile.ValidName(name) {
 		return situfile.ModuleID{}, false, nil
 	}

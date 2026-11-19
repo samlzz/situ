@@ -79,7 +79,7 @@ Commands and their direction:
 
 ### The current profile
 
-The current host name is the result of `os.Hostname()` up to the first `.`. The current profile is `hosts/<name>/`. There is no option to choose another profile, except as an explicit target of `list`.
+The current host name is the result of `os.Hostname()` up to the first `.`, lowercased (host names are case-insensitive). The current profile is `hosts/<name>/`. There is no option to choose another profile, except as an explicit target of `list`.
 
 ### Variables
 
