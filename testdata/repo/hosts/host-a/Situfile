@@ -1,0 +1,5 @@
+format    1
+requires  backup/etc-bundle
+
+# role    mode  owner      source        destination
+file      0644  root:root  example.conf  /etc/etc-bundle/example.conf

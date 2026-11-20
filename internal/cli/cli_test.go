@@ -170,9 +170,6 @@ func TestStubsExit3(t *testing.T) {
 		{[]string{"remove", "-r", "--purge", "a"}, "remove"},
 		{[]string{"remove", "--recursive", "a"}, "remove"},
 		{[]string{"adopt", "/etc/a", "mod"}, "adopt"},
-		{[]string{"list"}, "list"},
-		{[]string{"list", "/etc/a"}, "list"},
-		{[]string{"-C", "d", "--root", "/tmp/r", "list", "mod"}, "list"},
 		{[]string{"--root=/tmp/r", "check"}, "check"},
 	}
 	for _, tt := range tests {

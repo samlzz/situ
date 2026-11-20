@@ -107,12 +107,17 @@ the repository. A target starting with / is a path.`,
 			name:     "list",
 			synopsis: "[<module>|<path>]",
 			summary:  "List modules, or find the owner of a path",
-			desc: `Without argument, list the modules. With a module, list its entries.
-With a path (starting with /), show which module entry owns it.
-Without a host profile, ${HOST} is printed unexpanded and duplicate
-destinations are not checked.`,
+			desc: `Read the repository only: never the host or the state, no root needed.
+
+  situ list                 The dependency tree of the current host profile, then
+                            the entries of each module, expanded.
+  situ list hosts/<host>    The same listing, for that host profile.
+  situ list <component>     That component's block: expanded for the current
+                            profile, or unexpanded if none.
+  situ list /<path>         Every Situfile line whose expanded destination match to
+                            that path, with the profiles it matched. Exits 1 if none matches.`,
 			max: 1, paths: true,
-			run: notImplemented,
+			run: (*App).runList,
 		},
 		{
 			name:    "version",

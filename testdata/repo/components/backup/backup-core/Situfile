@@ -1,0 +1,5 @@
+format    1
+
+# role    mode  owner      source        destination
+file      0755  root:root  backup-core   /usr/local/sbin/backup-core
+dir       0750  root:root  -             /var/backups

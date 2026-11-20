@@ -1,0 +1,6 @@
+[Unit]
+Description=Bundle /etc
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/etc-bundle

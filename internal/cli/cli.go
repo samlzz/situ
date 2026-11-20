@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/samlzz/situ/internal/exitcode"
 	"github.com/samlzz/situ/internal/help"
@@ -17,12 +18,19 @@ type App struct {
 	Stdout  io.Writer
 	Stderr  io.Writer
 	Version func() string
-	Opts    Options
-	cmds    []command
+	// ? Tests replaces theses funcs
+	Hostname func() (string, error)
+	Getwd    func() (string, error)
+	Opts     Options
+	cmds     []command
 }
 
 func New(stdout, stderr io.Writer, version func() string) *App {
-	return &App{Stdout: stdout, Stderr: stderr, Version: version, cmds: commands()}
+	return &App{
+		Stdout: stdout, Stderr: stderr, Version: version,
+		Hostname: os.Hostname, Getwd: os.Getwd,
+		cmds: commands(),
+	}
 }
 
 func Run(args []string, stdout, stderr io.Writer) int {

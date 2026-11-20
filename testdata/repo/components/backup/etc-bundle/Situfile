@@ -1,0 +1,10 @@
+format    1
+requires  backup-core
+
+# role    mode  owner      source               destination
+file      0755  root:root  etc-bundle           /usr/local/sbin/etc-bundle
+file      0644  root:root  etc-bundle.service   /etc/systemd/system/etc-bundle.service
+config    0644  root:root  etc-bundle.default   /etc/default/etc-bundle
+dir       0700  root:root  -                    /etc/etc-bundle
+data      0700  root:root  -                    /var/backups/${HOST}/etc
+enable    etc-bundle.service
