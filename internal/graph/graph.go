@@ -45,7 +45,16 @@ type origin struct {
 	line int
 }
 
-func byRel(a, b ModuleID) int { return cmp.Compare(repo.Rel(a), repo.Rel(b)) }
+// byName orders modules: components first, then hosts, each group sorted
+// lexically by repository path.
+func byName(a, b ModuleID) int {
+	boolToInt := func (b bool) int { if b { return 1 }; return 0}
+
+	return cmp.Or(
+		cmp.Compare(boolToInt(a.IsProfile()), boolToInt(b.IsProfile())),
+		strings.Compare(repo.Rel(a), repo.Rel(b)),
+	)
+}
 
 // Build returns the graph of roots. Every stage runs only when the previous
 // one succeeded. All errors are reported together, sorted by path then line.
@@ -79,7 +88,7 @@ func Build(r *repo.Repo, roots []ModuleID, host string) (*Graph, error) {
 func (g *Graph) read(r *repo.Repo, roots []ModuleID) error {
 	var parseErrs, resErrs situfile.Errors
 	queue := slices.Clone(roots)
-	slices.SortFunc(queue, byRel)
+	slices.SortFunc(queue, byName)
 	for len(queue) > 0 {
 		id := queue[0]
 		queue = queue[1:]
@@ -165,7 +174,7 @@ func (g *Graph) sort() error {
 		}
 	}
 	for len(ready) > 0 {
-		slices.SortFunc(ready, byRel)
+		slices.SortFunc(ready, byName)
 		id := ready[0]
 		ready = ready[1:]
 		g.Order = append(g.Order, g.nodes[id])
@@ -183,7 +192,7 @@ func (g *Graph) ids() []ModuleID {
 	for id := range g.nodes {
 		ids = append(ids, id)
 	}
-	slices.SortFunc(ids, byRel)
+	slices.SortFunc(ids, byName)
 	return ids
 }
 
