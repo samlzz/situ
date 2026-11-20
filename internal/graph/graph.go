@@ -34,6 +34,7 @@ type Graph struct {
 	HostName string
 	// Order is a topological order, dependencies first.
 	Order []*Node
+	// each node has a Situfile.
 	nodes map[ModuleID]*Node
 }
 
@@ -48,7 +49,12 @@ type origin struct {
 // byName orders modules: components first, then hosts, each group sorted
 // lexically by repository path.
 func byName(a, b ModuleID) int {
-	boolToInt := func (b bool) int { if b { return 1 }; return 0}
+	boolToInt := func(b bool) int {
+		if b {
+			return 1
+		}
+		return 0
+	}
 
 	return cmp.Or(
 		cmp.Compare(boolToInt(a.IsProfile()), boolToInt(b.IsProfile())),
@@ -68,7 +74,7 @@ func Build(r *repo.Repo, roots []ModuleID, host string) (*Graph, error) {
 		return nil, err
 	}
 	if host != "" {
-		if err := g.entries(r); err != nil {
+		if err := g.checkEntries(r); err != nil {
 			return nil, err
 		}
 	} else {
@@ -76,7 +82,7 @@ func Build(r *repo.Repo, roots []ModuleID, host string) (*Graph, error) {
 			n.Entries = slices.Clone(n.SF.Entries)
 		}
 	}
-	if err := g.units(); err != nil {
+	if err := g.checkUnits(); err != nil {
 		return nil, err
 	}
 	return g, nil
@@ -87,21 +93,22 @@ func Build(r *repo.Repo, roots []ModuleID, host string) (*Graph, error) {
 // targets are stage 2 errors, reported only when every file parsed.
 func (g *Graph) read(r *repo.Repo, roots []ModuleID) error {
 	var parseErrs, resErrs situfile.Errors
+	seen := map[ModuleID]bool{}
 	queue := slices.Clone(roots)
 	slices.SortFunc(queue, byName)
 	for len(queue) > 0 {
 		id := queue[0]
 		queue = queue[1:]
-		if g.nodes[id] != nil {
+		if seen[id] {
 			continue
 		}
+		seen[id] = true
 		sf, err := r.Load(id)
 		if err != nil {
 			if err := parseErrs.Collect(err); err != nil {
 				return err
 			}
-			g.nodes[id] = &Node{ID: id} // seen, not followed
-			continue
+			continue // not followed, and not a node: it has no Situfile
 		}
 		n := &Node{ID: id, SF: sf}
 		g.nodes[id] = n
@@ -196,9 +203,9 @@ func (g *Graph) ids() []ModuleID {
 	return ids
 }
 
-// entries is stage 3: expansion for the host, sources, then destinations
+// checkEntries is stage 3: expansion for the host, sources, then destinations
 // declared by two modules.
-func (g *Graph) entries(r *repo.Repo) error {
+func (g *Graph) checkEntries(r *repo.Repo) error {
 	var errs situfile.Errors
 	vars := map[string]string{situfile.VarHost: g.HostName}
 	for _, n := range g.Order {
@@ -229,9 +236,9 @@ func (g *Graph) entries(r *repo.Repo) error {
 	return errs.Err()
 }
 
-// units is stage 4: a unit declared by two modules. The same unit under
+// checkUnits is stage 4: a unit declared by two modules. The same unit under
 // enable and start of one module is allowed.
-func (g *Graph) units() error {
+func (g *Graph) checkUnits() error {
 	var errs situfile.Errors
 	seen := map[string]origin{}
 	for _, n := range g.Order {
