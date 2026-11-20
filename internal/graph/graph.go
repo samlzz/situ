@@ -45,19 +45,6 @@ type origin struct {
 	line int
 }
 
-// collect adds err to errs when it is a set of line errors and returns it
-// otherwise (a system error that stops the build).
-func collect(errs *situfile.Errors, err error) error {
-	if err == nil {
-		return nil
-	}
-	if le, ok := errors.AsType[situfile.Errors](err); ok {
-		*errs = append(*errs, le...)
-		return nil
-	}
-	return err
-}
-
 func byRel(a, b ModuleID) int { return cmp.Compare(repo.Rel(a), repo.Rel(b)) }
 
 // Build returns the graph of roots. Every stage runs only when the previous
@@ -101,7 +88,7 @@ func (g *Graph) read(r *repo.Repo, roots []ModuleID) error {
 		}
 		sf, err := r.Load(id)
 		if err != nil {
-			if err := collect(&parseErrs, err); err != nil {
+			if err := parseErrs.Collect(err); err != nil {
 				return err
 			}
 			g.nodes[id] = &Node{ID: id} // seen, not followed
@@ -122,15 +109,10 @@ func (g *Graph) read(r *repo.Repo, roots []ModuleID) error {
 			queue = append(queue, dep)
 		}
 	}
-	if len(parseErrs) > 0 {
-		parseErrs.Sort()
-		return parseErrs
+	if err := parseErrs.Err(); err != nil {
+		return err
 	}
-	if len(resErrs) > 0 {
-		resErrs.Sort()
-		return resErrs
-	}
-	return nil
+	return resErrs.Err()
 }
 
 // sort is stage 2: cycles, then the topological order (Kahn). Ties are
@@ -165,9 +147,8 @@ func (g *Graph) sort() error {
 			visit(g.nodes[id])
 		}
 	}
-	if len(errs) > 0 {
-		errs.Sort()
-		return errs
+	if err := errs.Err(); err != nil {
+		return err
 	}
 
 	waiting := map[ModuleID]int{}
@@ -213,17 +194,16 @@ func (g *Graph) entries(r *repo.Repo) error {
 	vars := map[string]string{situfile.VarHost: g.HostName}
 	for _, n := range g.Order {
 		entries, err := situfile.Expand(n.SF, vars)
-		if err := collect(&errs, err); err != nil {
+		if err := errs.Collect(err); err != nil {
 			return err
 		}
 		n.Entries = entries
-		if err := collect(&errs, situfile.CheckSources(n.SF, r.ModuleDir(n.ID))); err != nil {
+		if err := errs.Collect(situfile.CheckSources(n.SF, r.ModuleDir(n.ID))); err != nil {
 			return err
 		}
 	}
-	if len(errs) > 0 {
-		errs.Sort()
-		return errs
+	if err := errs.Err(); err != nil {
+		return err
 	}
 	seen := map[string]origin{}
 	for _, n := range g.Order {
@@ -237,11 +217,7 @@ func (g *Graph) entries(r *repo.Repo) error {
 			}
 		}
 	}
-	if len(errs) > 0 {
-		errs.Sort()
-		return errs
-	}
-	return nil
+	return errs.Err()
 }
 
 // units is stage 4: a unit declared by two modules. The same unit under
@@ -260,9 +236,5 @@ func (g *Graph) units() error {
 			}
 		}
 	}
-	if len(errs) > 0 {
-		errs.Sort()
-		return errs
-	}
-	return nil
+	return errs.Err()
 }

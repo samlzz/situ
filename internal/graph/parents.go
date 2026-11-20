@@ -50,11 +50,7 @@ func CheckParents(g *Graph, root string) error {
 			}
 		}
 	}
-	if len(errs) > 0 {
-		errs.Sort()
-		return errs
-	}
-	return nil
+	return errs.Err()
 }
 
 // statParent returns a message when parent is not an existing directory
