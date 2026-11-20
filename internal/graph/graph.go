@@ -70,9 +70,11 @@ func Build(r *repo.Repo, roots []ModuleID, host string) (*Graph, error) {
 	if err := g.read(r, roots); err != nil {
 		return nil, err
 	}
-	if err := g.sort(); err != nil {
+	ids := g.ids()
+	if err := g.checkCycles(ids); err != nil {
 		return nil, err
 	}
+	g.topoOrder(ids)
 	if host != "" {
 		if err := g.checkEntries(r); err != nil {
 			return nil, err
@@ -131,42 +133,57 @@ func (g *Graph) read(r *repo.Repo, roots []ModuleID) error {
 	return resErrs.Err()
 }
 
-// sort is stage 2: cycles, then the topological order (Kahn). Ties are
-// broken by Rel, so components come before hosts, lexically.
-func (g *Graph) sort() error {
+// visitState is the state of a module during the cycle search.
+type visitState int
+
+const (
+	unvisited visitState = iota
+	visiting             // on the DFS stack
+	done
+)
+
+// cyclePath formats the cycle closed by dep ("a -> b -> a").
+func cyclePath(stack []ModuleID, dep ModuleID) string {
+	cycle := append(slices.Clone(stack[slices.Index(stack, dep):]), dep)
+	names := make([]string, len(cycle))
+	for i, c := range cycle {
+		names[i] = c.String()
+	}
+	return strings.Join(names, " -> ")
+}
+
+// checkCycles is stage 2: dependency cycles, searched depth-first from ids
+func (g *Graph) checkCycles(ids []ModuleID) error {
 	var errs situfile.Errors
-	state := map[ModuleID]int{} // 1 on the stack, 2 done
+	state := map[ModuleID]visitState{}
 	var stack []ModuleID
 	var visit func(n *Node)
 	visit = func(n *Node) {
-		state[n.ID] = 1
+		state[n.ID] = visiting
 		stack = append(stack, n.ID)
 		for i, dep := range n.Deps {
 			switch state[dep] {
-			case 0:
+			case unvisited:
 				visit(g.nodes[dep])
-			case 1:
-				cycle := append(slices.Clone(stack[slices.Index(stack, dep):]), dep)
-				names := make([]string, len(cycle))
-				for j, c := range cycle {
-					names[j] = c.String()
-				}
-				errs.Add(n.SF.Path, n.SF.Requires[i].Line, "dependency cycle: %s", strings.Join(names, " -> "))
+			case visiting:
+				errs.Add(n.SF.Path, n.SF.Requires[i].Line, "dependency cycle: %s", cyclePath(stack, dep))
 			}
 		}
 		stack = stack[:len(stack)-1]
-		state[n.ID] = 2
+		state[n.ID] = done
 	}
-	ids := g.ids()
 	for _, id := range ids {
-		if state[id] == 0 {
+		if state[id] == unvisited {
 			visit(g.nodes[id])
 		}
 	}
-	if err := errs.Err(); err != nil {
-		return err
-	}
+	return errs.Err()
+}
 
+// topoOrder fills g.Order with a topological order of ids (Kahn), the
+// dependencies first. The graph must be acyclic (checkCycles succeeded);
+// it panics otherwise.
+func (g *Graph) topoOrder(ids []ModuleID) {
 	waiting := map[ModuleID]int{}
 	dependents := map[ModuleID][]ModuleID{}
 	var ready []ModuleID
@@ -191,7 +208,9 @@ func (g *Graph) sort() error {
 			}
 		}
 	}
-	return nil
+	if len(g.Order) != len(g.nodes) {
+		panic("graph: topoOrder called on a cyclic graph")
+	}
 }
 
 func (g *Graph) ids() []ModuleID {
