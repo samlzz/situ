@@ -18,7 +18,7 @@ func parseOK(t *testing.T, body string) *Situfile {
 
 func TestExpandHost(t *testing.T) {
 	sf := parseOK(t, "data 0700 root:root - /var/backups/${HOST}/etc\nfile 0644 root:root a /etc/${HOST}/${HOST}.conf\nfile 0644 root:root b /etc/b\n")
-	got, err := Expand(sf, map[string]string{"HOST": "pve-xps"})
+	got, err := Expand(sf, map[string]string{"HOST": "host-b"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestExpandHost(t *testing.T) {
 	for _, e := range got {
 		dests = append(dests, e.Dest)
 	}
-	want := []string{"/var/backups/pve-xps/etc", "/etc/pve-xps/pve-xps.conf", "/etc/b"}
+	want := []string{"/var/backups/host-b/etc", "/etc/host-b/host-b.conf", "/etc/b"}
 	if !reflect.DeepEqual(dests, want) {
 		t.Fatalf("got %v", dests)
 	}

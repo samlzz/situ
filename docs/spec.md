@@ -160,7 +160,7 @@ file      0755  root:root  etc-bundle           /usr/local/sbin/etc-bundle      
 file      0644  root:root  etc-bundle.service   /etc/systemd/system/etc-bundle.service  -
 config    0644  root:root  etc-bundle.default   /etc/default/etc-bundle          9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
 dir       0700  root:root  -                    /etc/etc-bundle                  -
-data      0700  root:root  -                    /var/backups/pve-xps/etc         -
+data      0700  root:root  -                    /var/backups/host-b/etc          -
 enable    etc-bundle.service
 ```
 
@@ -317,7 +317,7 @@ components/backup/etc-bundle
   modified  config  /etc/default/etc-bundle
             -> situ adopt /etc/default/etc-bundle
             -> situ install --force backup/etc-bundle
-hosts/pve-xps
+hosts/host-b
   ok
 ```
 
@@ -371,21 +371,22 @@ A missing host file or unit is not an error during `remove`. A `remove` that fai
 Reads the repository only. Never reads the host or the state, never needs root.
 
 - Without argument: the graph of the current profile. Prints the dependency tree, then the entries of each module, expanded. No current profile: error (code 2) suggesting `situ list hosts/<host>`.
-- With a module: that module, its `requires` and its entries. Expanded with the named profile, or with the current profile if there is one; otherwise `${HOST}` is printed unexpanded.
+- With a host profile (`hosts/<host>`): the same listing as without argument, for that profile. Works without a current profile, so a host can be inspected from another machine.
+- With a component: that component, its `requires` and its entries. Expanded for the current profile if there is one; otherwise `${HOST}` is printed unexpanded.
 - With a path: every Situfile line whose destination, expanded for a profile of `hosts/`, is that path. The search covers the graph of every profile. Each match is printed like `grep -n`: the Situfile path relative to the repository, the line number, the line as written in the Situfile (variables unexpanded, whitespace normalized to two spaces), then the profiles it was matched for, in parentheses. A line matched for several profiles is printed once, with all of them. Exit 1 if nothing matches.
 
 ```
 $ situ list /etc/default/etc-bundle
-components/backup/etc-bundle/Situfile:7: config  0644  root:root  etc-bundle.default  /etc/default/etc-bundle  (hosts/pve-xps)
+components/backup/etc-bundle/Situfile:7: config  0644  root:root  etc-bundle.default  /etc/default/etc-bundle  (hosts/host-b)
 
-$ situ list /var/backups/pve-xps/etc
-components/backup/etc-bundle/Situfile:9: data  0700  root:root  -  /var/backups/${HOST}/etc  (hosts/pve-xps)
+$ situ list /var/backups/host-b/etc
+components/backup/etc-bundle/Situfile:9: data  0700  root:root  -  /var/backups/${HOST}/etc  (hosts/host-b)
 ```
 
 Layout of the listing without argument: first the dependency tree of the profile, one module per line (`components/<category>/<component>` or `hosts/<host>`), each level indented by two spaces below the module that requires it, children sorted by name. A module already shown elsewhere in the tree is shown again with ` (above)` after its name, without its own dependencies. Then, for each module in the order of the graph, a blank line and a block: the module name, then, indented by two spaces, its `requires` (in full form), its entries and its units, each with its fields separated by two spaces.
 
 ```
-hosts/pve-xps
+hosts/host-b
   components/backup/etc-bundle
     components/backup/backup-core
 
@@ -395,7 +396,7 @@ components/backup/backup-core
 ...
 ```
 
-With a module, only its block is printed.
+With a host profile, the listing above is printed for that profile. With a component, only its block is printed.
 
 ### `version`
 
@@ -520,4 +521,4 @@ Required cases, at minimum:
 - An options column in the Situfile.
 - Unit directories other than `/etc/systemd/system` (e.g. LibreELEC's `/storage/.config/system.d`).
 - Other architectures than the one situ is built for: the build is the user's concern.
-- Remote hosts, APIs (Proxmox, TrueNAS), templates, secrets.
+- Remote hosts, management APIs, templates, secrets.

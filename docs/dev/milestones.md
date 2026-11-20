@@ -56,9 +56,9 @@ Out of scope: state, comparison, any write to the host.
 
 Tests: spec cases 2, 3, 4, 14.
 
-Verify: `make check`; a fixture repository in `testdata/` reproducing `backup-core`, `etc-bundle` and a `hosts/pve-xps` profile; `go run ./cmd/situ -C testdata/<fixture> list hosts/pve-xps` and `list /etc/default/etc-bundle`.
+Verify: `make check`; a fixture repository in `testdata/` reproducing `backup-core`, `etc-bundle` and a `hosts/host-b` profile; `go run ./cmd/situ -C testdata/<fixture> list hosts/host-b` and `list /etc/default/etc-bundle`.
 
-Maintainer: on the laptop, `go run ./cmd/situ -C ~/path/to/hl-infra list hosts/pve-xps`, then a path search. Compare with the real Situfiles.
+Maintainer: on the laptop, `go run ./cmd/situ -C ~/path/to/config-repo list hosts/host-b`, then a path search. Compare with the real Situfiles.
 
 ## M3: state, comparison, `check`
 
@@ -80,7 +80,7 @@ Tests: spec case 5; the `check` side of cases 6, 7, 8 and 9; case 17.
 
 Verify: `make check`; under a temporary root built from the fixture: `check` before any install (`missing` everywhere, exit 1); files copied by hand then `check` (`unrecorded`); one `config` edited (`unknown`).
 
-Maintainer: build a static binary (`make build`), copy it by hand to `<clone>/bin/situ` on pve-xps, and run `situ check` there. No state exists yet: expect `unrecorded` for identical files, and investigate any `unknown`, `type` or unit status before M4.
+Maintainer: build a static binary (`make build`), copy it by hand to `<clone>/bin/situ` on host-b, and run `situ check` there. No state exists yet: expect `unrecorded` for identical files, and investigate any `unknown`, `type` or unit status before M4.
 
 ## M4: `install`
 
@@ -104,7 +104,7 @@ Tests: the `install` side of cases 6, 7, 8 and 9; cases 10, 11, 15 (except `remo
 
 Verify: `make check`; under a temporary root: install from nothing, then a second install prints `nothing to do`; takeover of identical files records them without writing.
 
-Maintainer: copy the new binary to pve-xps. Run `situ check`, then `situ install`. On the first run, it must only `record` (takeover): if the plan shows any `create`, `update` or `overwrite` you did not expect, it will not stop by itself, so read `situ check` first. Then `situ check` must exit 0, and `git -C /etc log -1` must show the etckeeper commit.
+Maintainer: copy the new binary to host-b. Run `situ check`, then `situ install`. On the first run, it must only `record` (takeover): if the plan shows any `create`, `update` or `overwrite` you did not expect, it will not stop by itself, so read `situ check` first. Then `situ check` must exit 0, and `git -C /etc log -1` must show the etckeeper commit.
 
 ## M5: `remove`, `adopt`, end to end
 
@@ -137,5 +137,5 @@ Do:
 Maintainer (outside Claude Code):
 
 1. Tag and push: `git tag v0.1.0 && git push origin v0.1.0`. The tag is in the Go module proxy forever once fetched.
-2. In hl-infra: `tools/situ.version` holds `v0.1.0`; run `tools/deploy-situ pve-xps`. It prints `situ v0.1.0` from the host.
-3. On pve-xps: `situ check` exits 0.
+2. In the configuration repository: `tools/situ.version` holds `v0.1.0`; run `tools/deploy-situ host-b`. It prints `situ v0.1.0` from the host.
+3. On host-b: `situ check` exits 0.

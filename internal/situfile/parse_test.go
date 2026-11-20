@@ -211,7 +211,7 @@ func TestParseRequiresAccepted(t *testing.T) {
 		self ModuleID
 	}{
 		"two categories": {hdr + "requires x/a\nrequires y/a\n", ModuleID{}},
-		"profile self":   {hdr + "requires pve-xps\n", ModuleID{Category: HostsDir, Component: "pve-xps"}},
+		"profile self":   {hdr + "requires host-b\n", ModuleID{Category: HostsDir, Component: "host-b"}},
 		"other category": {hdr + "requires other/me\n", ModuleID{Category: "c", Component: "me"}},
 	} {
 		t.Run(name, func(t *testing.T) {
