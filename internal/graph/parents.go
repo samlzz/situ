@@ -14,13 +14,11 @@ import (
 	"github.com/samlzz/situ/internal/situfile"
 )
 
-// CheckParents checks the parent directory of every destination (docs/spec.md,
-// Parents of destinations): it is declared by a dir or data entry of the
-// graph, or it is a directory under root. A symbolic link to a directory
-// counts as a directory. The graph must have been built with a host, so
-// that destinations are expanded. A missing parent or one that is not a
-// directory is code 2; any other stat error is code 3.
-func CheckParents(g *Graph, root string) error {
+// CheckParents checks that the parent of every destination is declared by a
+// dir or data entry of the graph, or is a directory under root (a symbolic
+// link to a directory counts). The graph must be built with a host. A bad
+// parent is code 2, any other stat error code 3.
+func (g *Graph) CheckParents(root string) error {
 	declared := map[string]bool{}
 	for _, n := range g.Order {
 		for _, e := range n.Entries {

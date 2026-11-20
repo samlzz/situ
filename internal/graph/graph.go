@@ -62,6 +62,15 @@ func byName(a, b ModuleID) int {
 	)
 }
 
+func (g *Graph) ids() []ModuleID {
+	ids := make([]ModuleID, 0, len(g.nodes))
+	for id := range g.nodes {
+		ids = append(ids, id)
+	}
+	slices.SortFunc(ids, byName)
+	return ids
+}
+
 // Build returns the graph of roots. Every stage runs only when the previous
 // one succeeded. All errors are reported together, sorted by path then line.
 // Without a host, destinations aren't expanded (so destinations aren't checked).
@@ -110,7 +119,7 @@ func (g *Graph) read(r *repo.Repo, roots []ModuleID) error {
 			if err := parseErrs.Collect(err); err != nil {
 				return err
 			}
-			continue // not followed, and not a node: it has no Situfile
+			continue // no Situfile: not followed, not a node
 		}
 		n := &Node{ID: id, SF: sf}
 		g.nodes[id] = n
@@ -133,15 +142,6 @@ func (g *Graph) read(r *repo.Repo, roots []ModuleID) error {
 	return resErrs.Err()
 }
 
-// visitState is the state of a module during the cycle search.
-type visitState int
-
-const (
-	unvisited visitState = iota
-	visiting             // on the DFS stack
-	done
-)
-
 // cyclePath formats the cycle closed by dep ("a -> b -> a").
 func cyclePath(stack []ModuleID, dep ModuleID) string {
 	cycle := append(slices.Clone(stack[slices.Index(stack, dep):]), dep)
@@ -154,10 +154,18 @@ func cyclePath(stack []ModuleID, dep ModuleID) string {
 
 // checkCycles is stage 2: dependency cycles, searched depth-first from ids
 func (g *Graph) checkCycles(ids []ModuleID) error {
+	// visitState is the state of a module during the cycle search.
+	type visitState int
+	const (
+		unvisited visitState = iota
+		visiting             // on the DFS stack
+		done
+	)
 	var errs situfile.Errors
 	state := map[ModuleID]visitState{}
 	var stack []ModuleID
 	var visit func(n *Node)
+
 	visit = func(n *Node) {
 		state[n.ID] = visiting
 		stack = append(stack, n.ID)
@@ -172,6 +180,7 @@ func (g *Graph) checkCycles(ids []ModuleID) error {
 		stack = stack[:len(stack)-1]
 		state[n.ID] = done
 	}
+
 	for _, id := range ids {
 		if state[id] == unvisited {
 			visit(g.nodes[id])
@@ -187,6 +196,7 @@ func (g *Graph) topoOrder(ids []ModuleID) {
 	waiting := map[ModuleID]int{}
 	dependents := map[ModuleID][]ModuleID{}
 	var ready []ModuleID
+
 	for _, id := range ids {
 		n := g.nodes[id]
 		waiting[id] = len(n.Deps)
@@ -211,15 +221,6 @@ func (g *Graph) topoOrder(ids []ModuleID) {
 	if len(g.Order) != len(g.nodes) {
 		panic("graph: topoOrder called on a cyclic graph")
 	}
-}
-
-func (g *Graph) ids() []ModuleID {
-	ids := make([]ModuleID, 0, len(g.nodes))
-	for id := range g.nodes {
-		ids = append(ids, id)
-	}
-	slices.SortFunc(ids, byName)
-	return ids
 }
 
 // checkEntries is stage 3: expansion for the host, sources, then destinations

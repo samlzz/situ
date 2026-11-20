@@ -22,7 +22,7 @@ func parentsGraph(t *testing.T, lines ...string) *Graph {
 func TestParentExistsUnderRoot(t *testing.T) {
 	root := testutil.Tree(t, map[string]string{"etc/": "", "top/": ""})
 	g := parentsGraph(t, "file 0644 root:root s /etc/a", "dir 0755 root:root - /top")
-	if err := CheckParents(g, root); err != nil {
+	if err := g.CheckParents(root); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -36,7 +36,7 @@ func TestParentDeclared(t *testing.T) {
 			role+" 0755 root:root - /opt/app",
 			"dir 0755 root:root - /opt",
 		)
-		if err := CheckParents(g, t.TempDir()); err != nil {
+		if err := g.CheckParents(t.TempDir()); err != nil {
 			t.Errorf("%s: %v", role, err)
 		}
 	}
@@ -46,14 +46,14 @@ func TestParentDeclared(t *testing.T) {
 		"components/a/x/s":        "x",
 		"components/a/y/Situfile": testutil.Situfile("data 0755 root:root - /srv"),
 	}, "h", comp("a", "x"))
-	if err := CheckParents(g, t.TempDir()); err != nil {
+	if err := g.CheckParents(t.TempDir()); err != nil {
 		t.Error(err)
 	}
 }
 
 func TestParentUndeclaredMissing(t *testing.T) {
 	g := parentsGraph(t, "dir 0755 root:root - /var/lib/app", "file 0644 root:root s /var/lib/app/a", "file 0644 root:root s /var/lib/b")
-	err := CheckParents(g, t.TempDir())
+	err := g.CheckParents(t.TempDir())
 	wantErr(t, err,
 		`components/a/x/Situfile:2: parent directory "/var/lib" of "/var/lib/app" does not exist and is not declared by a dir or data entry`,
 		`components/a/x/Situfile:4: parent directory "/var/lib" of "/var/lib/b" does not exist and is not declared by a dir or data entry`)
@@ -62,14 +62,14 @@ func TestParentUndeclaredMissing(t *testing.T) {
 // A file is not a declaration: only dir and data are.
 func TestParentDeclaredByFileIsNotEnough(t *testing.T) {
 	g := parentsGraph(t, "file 0644 root:root s /x", "file 0644 root:root s /x/y")
-	wantErr(t, CheckParents(g, t.TempDir()),
+	wantErr(t, g.CheckParents(t.TempDir()),
 		`components/a/x/Situfile:3: parent directory "/x" of "/x/y" does not exist and is not declared by a dir or data entry`)
 }
 
 func TestParentIsNotADirectory(t *testing.T) {
 	root := testutil.Tree(t, map[string]string{"etc/regular": "x"})
 	g := parentsGraph(t, "file 0644 root:root s /etc/regular/a", "file 0644 root:root s /etc/regular/deeper/b")
-	err := CheckParents(g, root)
+	err := g.CheckParents(root)
 	wantErr(t, err,
 		`components/a/x/Situfile:2: parent directory "/etc/regular" of "/etc/regular/a" is not a directory`,
 		`components/a/x/Situfile:3: parent directory "/etc/regular/deeper" of "/etc/regular/deeper/b" is not a directory (a component of its path is not)`)
@@ -83,13 +83,13 @@ func TestParentSymlinkToDirectory(t *testing.T) {
 		}
 	}
 	g := parentsGraph(t, "file 0644 root:root s /link/a")
-	if err := CheckParents(g, root); err != nil {
+	if err := g.CheckParents(root); err != nil {
 		t.Errorf("link to a directory refused: %v", err)
 	}
 	// A link to a regular file or to nothing is not a directory.
-	wantErr(t, CheckParents(parentsGraph(t, "file 0644 root:root s /badlink/a"), root),
+	wantErr(t, parentsGraph(t, "file 0644 root:root s /badlink/a").CheckParents(root),
 		`components/a/x/Situfile:2: parent directory "/badlink" of "/badlink/a" is not a directory`)
-	wantErr(t, CheckParents(parentsGraph(t, "file 0644 root:root s /dangling/a"), root),
+	wantErr(t, parentsGraph(t, "file 0644 root:root s /dangling/a").CheckParents(root),
 		`components/a/x/Situfile:2: parent directory "/dangling" of "/dangling/a" does not exist and is not declared by a dir or data entry`)
 }
 
@@ -102,7 +102,7 @@ func TestParentStatErrorIsSystem(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.Chmod(filepath.Join(root, "locked"), 0o755) })
-	err := CheckParents(parentsGraph(t, "file 0644 root:root s /locked/inner/a"), root)
+	err := parentsGraph(t, "file 0644 root:root s /locked/inner/a").CheckParents(root)
 	if exitcode.CodeOf(err) != exitcode.System {
 		t.Errorf("err = %v, want code 3", err)
 	}
